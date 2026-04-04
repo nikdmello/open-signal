@@ -1,3 +1,5 @@
+import { appendFile, mkdir } from "node:fs/promises";
+
 type Trade = {
   exchange: "coinbase";
   productId: string;
@@ -29,6 +31,11 @@ function normalizeTrade(rawTrade: {
     };
 }
 
+async function persistTrade(trade: Trade): Promise<void> {
+    await mkdir("data", { recursive: true });
+    await appendFile("data/trades.ndjson", JSON.stringify(trade) + "\n" );
+}
+
 const WS_URL = "wss://advanced-trade-ws.coinbase.com";
 const PRODUCT_ID = "BTC-USD";
 
@@ -48,7 +55,7 @@ socket.addEventListener("open", () => {
     );
 });
 
-socket.addEventListener("message", (event) => {
+socket.addEventListener("message", async (event) => {
     if (typeof event.data !== "string") {
         console.log("Received non-string message");
         return;
@@ -68,6 +75,7 @@ socket.addEventListener("message", (event) => {
         for (const trade of eventItem.trades) {
             const normalizedTrade = normalizeTrade(trade);
             console.log("Normalized trade:", normalizedTrade);
+            await persistTrade(normalizedTrade);
         }
     }
 });
